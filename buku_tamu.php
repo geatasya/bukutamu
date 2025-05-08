@@ -1,22 +1,24 @@
 <?php 
+session_start();
 
 $servername = "localhost";
 $dbUsername = "root";
-$dbPassword = "";
+$dbPassword = "GeatasyaMySQL29.";
 $dbname = "buku_tamu";
 
 $conn = new mysqli($servername, $dbUsername, $dbPassword, $dbname);
 
-session_start();
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
 if (!isset($_SESSION['username'])) {
-    header("Location: index.php");
+    header("Location: login.php");
     exit();
 }
 
-$data_tamu = [];
-$query = "SELECT * FROM tb_tamu";
+$query = "SELECT * FROM tb_tamu ORDER BY created_at DESC";
 $data_tamu = $conn->query($query);
-
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $nama = htmlspecialchars($_POST['nama']);
@@ -30,8 +32,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     ];
 
     $_SESSION['buku_tamu'][] = $newEntry;
-    $query = "INSERT INTO tb_tamu (nama, email, pesan) VALUES ('$nama','$email', '$pesan')";
-    $fetch = $conn->query($query);
+    
+    $stmt = $conn->prepare("INSERT INTO tb_tamu (nama, email, pesan) VALUES (?, ?, ?)");
+    $stmt->bind_param("sss", $nama, $email, $pesan);
+    $stmt->execute();
 }
 
 ?>
@@ -44,120 +48,126 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>Buku Tamu</title>
     <style>
         body {
-            font-family: Arial, sans-serif; 
-            text-align: center; 
-            background-color: #f0f0f0;
-        }
-
-        .container {
-            width: 50%; 
-            margin: auto; 
-            padding: 20px; 
-            border: 1px solid #ccc; 
-            border-radius: 10px; 
-            background-color: #d9d9d9;
-        }
-
-        .sidebar {
-            width: 35%;
+            font-family: 'Poppins', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
             padding: 20px;
-            background: #FFEBD2;
-            border-radius: 10px;
-            height: fit-content;
         }
 
-        .content {
-            width: 60%;
-            background: #FFF8E7;
-            padding: 20px;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            height: 93%;
+        .main-container {
+            max-width: 800px;
+            margin: 0 auto;
         }
 
-        h2, h3 {
-            font-weight: bold;
-            font-size: 20px;
+        .form-container {
+            background: #1e1e1e;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .tamu-container {
+            background: #1e1e1e;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            color: #bb86fc;
+            font-weight: 600;
+            margin-bottom: 20px;
             text-align: center;
-            color: #8B5E3C;
         }
 
         h3 {
-            margin-top: 2px;
+            color: #ffffff; 
+            font-weight: 500;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
         }
 
         input, textarea {
-            width: 94%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #8B5E3C;
-            border-radius: 8px;
-            background: #FFF8E7;
-            font-size: 14px;
-        }
-
-        button {
             width: 100%;
             padding: 12px;
-            background: #8B5E3C;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #2d2d2d;
+            font-size: 14px;
+            color: #e0e0e0;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button, .logout-btn {
+            padding: 12px;
+            background: #bb86fc;
             border: none;
-            color: white;
+            color: #121212;
             font-size: 16px;
-            font-weight: bold;
+            font-weight: 600;
             border-radius: 8px;
             cursor: pointer;
             transition: 0.3s;
+            text-align: center;
+            text-decoration: none;
+            flex: 1;
+        }
+
+        .logout-btn {
+            background: #ff5555;
+            display: block;
+            text-align: center;
+            padding: 12px;
         }
 
         button:hover {
-            background: #6F4E37;
+            background: #9d65d0;
+            color: #fff;
         }
 
-        .list-tamu {
-            flex-grow: 1;
-            background: #FFF8E7;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            overflow-y: auto;
-            max-height: 60vh;
-            margin-top: 0px;
+        .logout-btn:hover {
+            background: #ff3333;
+            color: #fff;
         }
 
         .tamu-item {
-            background: #FFEBD2;
-            padding: 10px;
+            background: #252525;
+            padding: 15px;
             border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            margin-bottom: 10px;
-            width: 95%;
-            display: inline-block;
-            position: relative;
+            margin-bottom: 15px;
+            border-left: 4px solid #bb86fc;
+        }
+
+        .tamu-item strong {
+            color: #bb86fc;
+            font-size: 16px;
         }
 
         .tamu-item em {
             display: block;
-            margin-top: 5px;
+            margin-top: 8px;
             font-size: 14px;
             font-style: normal;
-            color: #5A3E2B;
-        }
-
-        a {
-            display: block;
-            padding: 10px 20px;
-            background: #C06014;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            transition: 0.3s;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        a:hover {
-            background: #8B4513;
+            color: #b0b0b0;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -166,15 +176,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <script>
   $(document).ready(function() {
     $('#formTamu').on('submit', function(e) {
-      e.preventDefault(); // Cegah reload
+      e.preventDefault();
 
       $.ajax({
-        url: 'proses_tamu.php', // file proses AJAX
+        url: 'proses_tamu.php',
         type: 'POST',
         data: $(this).serialize(),
         success: function(response) {
-          $('#tamuContainer').prepend(response); // Tambahkan entry baru di atas
-          $('#formTamu')[0].reset(); // Kosongkan form
+          $('#tamuContainer').prepend(response);
+          $('#formTamu')[0].reset();
         }
       });
     });
@@ -182,23 +192,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </script>
 
 <body>
-    <div class="container">
-        <div class="sidebar">
+    <div class="main-container">
+        <div class="form-container">
             <h2>Selamat Datang, <?php echo $_SESSION['username']; ?>!</h2>
             <h3>Silahkan mengisi kolom dibawah</h3>
             <form id="formTamu">
-                <input type="text" name="nama" placeholder="Nama" required><br>
-                <input type="email" name="email" placeholder="Email" required><br>
-                <textarea name="pesan" placeholder="Pesan" required></textarea><br>
-                <button type="submit">Kirim</button>
+                <div class="form-group">
+                    <input type="text" name="nama" placeholder="Nama" required>
+                </div>
+                <div class="form-group">
+                    <input type="email" name="email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <textarea name="pesan" placeholder="Pesan" required></textarea>
+                </div>
+                <div class="button-group">
+                    <button type="submit">Kirim</button>
+                    <a href="logout.php" class="logout-btn">Logout</a>
+                </div>
             </form>
-            <br>
-            <a href="logout.php">Logout</a>
         </div>
 
-        <div class="content">
+        <div class="tamu-container">
             <h3>Daftar Buku Tamu</h3>
-            <div class="list-tamu" id="tamuContainer">
+            <div id="tamuContainer">
                 <?php foreach($data_tamu as $tamu) { ?>
                     <div class='tamu-item'>
                         <strong><?= $tamu['nama'] ?></strong> (<?= $tamu['email'] ?>) 
